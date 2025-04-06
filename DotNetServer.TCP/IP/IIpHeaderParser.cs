@@ -43,7 +43,10 @@ public class IPv4HeaderParser : IIpHeaderParser
         //temproarily passing empty to options...
         var options = Array.Empty<byte>();
 
-        return new(); 
+        return new IPv4Header(version, sourceAddress, destinationAddress,
+            internetHeaderLength, differentiatedServicesCodePoint, explicitCongestionNotification,
+            totalLength, identification, flags, fragmentOffset, timeToLive, protocol, headerChecksum,
+            options); 
     }
 
     private IpFragmentationFlags ReturnFragmentationFlags(byte sixthByte)
