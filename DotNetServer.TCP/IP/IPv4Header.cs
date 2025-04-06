@@ -1,9 +1,30 @@
 ﻿namespace DotNetServer.TCP.IP;
 public sealed class IPv4Header : IpHeader
 {
-    public IPv4Header() 
+    public IPv4Header(
+        byte internetHeaderLength,
+        byte differentiatedServicesCodePoint,
+        byte explicitCongestionNotification,
+        int totalLength,
+        int identification,
+        IpFragmentationFlags flags,
+        int fragmentOffset,
+        byte timeToLive,
+        Protocols protocol,
+        int headerChecksum,
+        byte[] options)
     {
-        
+        InternetHeaderLength = internetHeaderLength;
+        DifferentiatedServicesCodePoint = differentiatedServicesCodePoint;
+        ExplicitCongestionNotification = explicitCongestionNotification;
+        TotalLength = totalLength;
+        Identification = identification;
+        Flags = flags;
+        FragmentOffset = fragmentOffset;
+        TimeToLive = timeToLive;
+        Protocol = protocol;
+        HeaderChecksum = headerChecksum;
+        Options = options;
     }
 
 
