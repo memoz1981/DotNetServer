@@ -38,7 +38,7 @@ public class IPv4HeaderParser : IIpHeaderParser
         var headerChecksum = (data[10] << 8) | data[11];
 
         var sourceAddress = new IPAddress(new ArraySegment<byte>(data, 12, 4).ToArray());
-        var destinationAddress = new IPAddress(new ArraySegment<byte>(data, 14, 4).ToArray());
+        var destinationAddress = new IPAddress(new ArraySegment<byte>(data, 16, 4).ToArray());
 
         //temproarily passing empty to options...
         var options = Array.Empty<byte>();
