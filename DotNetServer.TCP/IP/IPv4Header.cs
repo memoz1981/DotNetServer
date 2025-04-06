@@ -1,7 +1,12 @@
-﻿namespace DotNetServer.TCP.IP;
+﻿using System.Net;
+
+namespace DotNetServer.TCP.IP;
 public sealed class IPv4Header : IpHeader
 {
     public IPv4Header(
+        IpVersion version,
+        IPAddress sourceAddress,
+        IPAddress destinationAddress,
         byte internetHeaderLength,
         byte differentiatedServicesCodePoint,
         byte explicitCongestionNotification,
@@ -12,7 +17,7 @@ public sealed class IPv4Header : IpHeader
         byte timeToLive,
         Protocols protocol,
         int headerChecksum,
-        byte[] options)
+        byte[] options) : base(version, sourceAddress, destinationAddress)
     {
         InternetHeaderLength = internetHeaderLength;
         DifferentiatedServicesCodePoint = differentiatedServicesCodePoint;
@@ -41,17 +46,17 @@ public sealed class IPv4Header : IpHeader
     // 2 bits - optional feature
     public byte ExplicitCongestionNotification { get; }
 
-    // packet size in bytes
+    // packet size in bytes (2 bytes)
     // minimum 20 bytes - maximum 65535 bytes
     public int TotalLength { get; }
 
-    // used to identify fragmented packets of a single IP datagram
+    // used to identify fragmented packets of a single IP datagram (2 bytes)
     public int Identification { get; }
 
     // fragmentation flags
     public IpFragmentationFlags Flags { get; }
 
-    // offset of a particular fragment relative to original IP datagram
+    // offset of a particular fragment relative to original IP datagram (stored in 13 bits, bytes 6/7)
     public int FragmentOffset { get; }
 
     // determines a datagrams lifetime
