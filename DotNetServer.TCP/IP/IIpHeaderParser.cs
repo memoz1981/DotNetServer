@@ -3,14 +3,14 @@
 namespace DotNetServer.TCP.IP;
 public interface IIpHeaderParser
 {
-    IpHeader Decode(byte[] data);
+    IpHeader Decode(byte[] data, out int length);
 
     void Encode(IpHeader ipHeader, byte[] data, int startIndex, out int length); 
 }
 
 public class IPv4HeaderParser : IIpHeaderParser
 {
-    public IpHeader Decode(byte[] data)
+    public IpHeader Decode(byte[] data, out int length)
     {
         if (data is null || data.Length < 20)
             throw new ArgumentException("Packet either null or size less than minimum IP byte size (20).");
@@ -43,10 +43,14 @@ public class IPv4HeaderParser : IIpHeaderParser
         //temproarily passing empty to options...
         var options = Array.Empty<byte>();
 
-        return new IPv4Header(version, sourceAddress, destinationAddress,
+        var header = new IPv4Header(version, sourceAddress, destinationAddress,
             internetHeaderLength, differentiatedServicesCodePoint, explicitCongestionNotification,
             totalLength, identification, flags, fragmentOffset, timeToLive, protocol, headerChecksum,
-            options); 
+            options);
+
+        length = header.HeaderLength;
+
+        return header;
     }
 
     private IpFragmentationFlags ReturnFragmentationFlags(byte sixthByte)
