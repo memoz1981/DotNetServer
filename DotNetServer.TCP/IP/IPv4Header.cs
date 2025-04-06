@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Text;
 
 namespace DotNetServer.TCP.IP;
 public sealed class IPv4Header : IpHeader
@@ -70,4 +71,27 @@ public sealed class IPv4Header : IpHeader
 
     // For now will be kept as raw data
     public byte[] Options { get; }
+
+    public override string ToString()
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("------- IPv4 Header Start --------"); 
+        builder.AppendLine($"Version: {Version}");
+        builder.AppendLine($"SourceAddress: {SourceAddress}");
+        builder.AppendLine($"DestinationAddress: {DestinationAddress}");
+        builder.AppendLine($"InternetHeaderLength: {InternetHeaderLength}");
+        builder.AppendLine($"HeaderLength: {HeaderLength}");
+        builder.AppendLine($"DifferentiatedServicesCodePoint: {DifferentiatedServicesCodePoint}");
+        builder.AppendLine($"ExplicitCongestionNotification: {ExplicitCongestionNotification}");
+        builder.AppendLine($"TotalLength: {TotalLength}");
+        builder.AppendLine($"Identification: {Identification}");
+        builder.AppendLine($"Flags: {Flags}");
+        builder.AppendLine($"FragmentOffset: {FragmentOffset}");
+        builder.AppendLine($"TimeToLive: {TimeToLive}");
+        builder.AppendLine($"Protocol: {Protocol}");
+        builder.AppendLine($"HeaderChecksum: {HeaderChecksum}");
+        builder.AppendLine("------- IPv4 Header Start --------");
+
+        return builder.ToString(); 
+    }
 }
