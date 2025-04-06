@@ -18,8 +18,8 @@ public class TcpHeaderParser : ITcpHeaderParser
         var sourcePort = data[startIndex] << 8 | data[startIndex + 1];
         var destinationPort = data[startIndex+2] << 8 | data[startIndex + 3];
 
-        var sequenceNumber = BitConverter.ToInt32(data, startIndex + 4);
-        var acknowledgementNumber = BitConverter.ToInt32(data, startIndex + 8);
+        var sequenceNumber = BitConverter.ToUInt32(data, startIndex + 4);
+        var acknowledgementNumber = BitConverter.ToUInt32(data, startIndex + 8);
 
         var dataOffset = (byte)(data[startIndex + 12] >> 4);
         var flags = (TcpHeaderFlags)data[startIndex + 13];

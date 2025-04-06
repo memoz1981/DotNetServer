@@ -6,8 +6,8 @@ public class TcpHeader
     public TcpHeader(
         int sourcePort,
         int destinationPort,
-        int sequenceNumber,
-        int acknowledgementNumber,
+        uint sequenceNumber,
+        uint acknowledgementNumber,
         byte dataOffset,
         TcpHeaderFlags flags,
         int window,
@@ -27,8 +27,8 @@ public class TcpHeader
 
     public int SourcePort { get; }
     public int DestinationPort { get; }
-    public int SequenceNumber { get; }
-    public int AcknowledgementNumber { get; }
+    public uint SequenceNumber { get; }
+    public uint AcknowledgementNumber { get; }
     public byte DataOffset { get; }
     public int TcpHeaderLength { get => DataOffset * 4; }
     public TcpHeaderFlags Flags { get; }
