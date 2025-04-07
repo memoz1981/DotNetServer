@@ -23,6 +23,15 @@ public class TcpHeader
         Window = window;
         Checksum = checksum;
         UrgentPointer = urgentPointer;
+        Options = new();
+    }
+
+    public void AddOption(TcpOption optionToAdd)
+    {
+        if (Options.ContainsKey(optionToAdd.Kind))
+            throw new InvalidOperationException($"Tcp option with kind {optionToAdd.Kind} is already available.");
+
+        Options[optionToAdd.Kind] = optionToAdd;
     }
 
     public int SourcePort { get; }
@@ -37,6 +46,7 @@ public class TcpHeader
     public int UrgentPointer { get; }
     //placeholder property to sort out options - for now skipping. 
     public int OptionsLength { get => TcpHeaderLength - 20; }
+    public Dictionary<TcpOptionsKind, TcpOption> Options { get; }
 
     public override string ToString()
     {
