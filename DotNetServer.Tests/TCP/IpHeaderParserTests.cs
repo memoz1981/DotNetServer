@@ -19,7 +19,7 @@ public class IpHeaderParserTests
     {
         //arrange
         var ipHeader = new IPv4Header(IpVersion.IPv4, new IPAddress([127, 0, 0, 1]),
-            new IPAddress([255, 255, 1, 0]), 200, 110, 220, 54321, 1234567, IpFragmentationFlags.DontFragment,
+            new IPAddress([255, 255, 1, 0]), 5, 110, 220, 54321, 1234567, IpFragmentationFlags.DontFragment,
             0, 120, Protocols.TCP, 12000, null);
         byte[] data = new byte[20];
 

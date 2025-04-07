@@ -122,11 +122,11 @@ public class IPv4HeaderParser : IIpHeaderParser
 
         //source address
         byte[] sourceAddressBytes = ipv4.SourceAddress.GetAddressBytes(); // Returns bytes in correct order
-        Buffer.BlockCopy(sourceAddressBytes, 0, data, index, 4);
+        Buffer.BlockCopy(sourceAddressBytes, 0, data, ++index, 4);
         index += 4;
 
         //destination address
-        byte[] destAddressBytes = ipv4.SourceAddress.GetAddressBytes(); // Returns bytes in correct order
+        byte[] destAddressBytes = ipv4.DestinationAddress.GetAddressBytes(); // Returns bytes in correct order
         Buffer.BlockCopy(destAddressBytes, 0, data, index, 4);
         index += 4;
 

@@ -2,5 +2,5 @@
 // 2 main versions
 public enum IpVersion
 {
-    IPv4, IPv6
+    IPv4 =4, IPv6 = 6
 }
