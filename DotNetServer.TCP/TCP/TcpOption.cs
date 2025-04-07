@@ -11,32 +11,85 @@ public abstract class TcpOption
     public int Length { get; }
 }
 
-public class TcpOptionNone : TcpOption
+public sealed class TcpOptionNone : TcpOption
 {
     public TcpOptionNone() : base(TcpOptionsKind.EndOfOptionsList, 1) {}
 }
 
-public class TcpOptionNoOp : TcpOption
+public sealed class TcpOptionNoOp : TcpOption
 {
     public TcpOptionNoOp() : base(TcpOptionsKind.NoOp, 1) { }
 }
 
-public class TcpOptionMss : TcpOption
+public sealed class TcpOptionMss : TcpOption
 {
-    public TcpOptionMss() : base(TcpOptionsKind.MaximumSegmentSize, 4)
+    public TcpOptionMss(ushort maximumSegmentSize) : base(TcpOptionsKind.MaximumSegmentSize, 4)
     {
-        MaximumSegmentSize = 4;
+        MaximumSegmentSize = maximumSegmentSize;
     }
 
     public ushort MaximumSegmentSize { get; }
 }
 
-public class TcpOptionWindowScale : TcpOption
+public sealed class TcpOptionWindowScale : TcpOption
 {
-    public TcpOptionWindowScale() : base(TcpOptionsKind.MaximumSegmentSize, 3)
+    public TcpOptionWindowScale(byte windowScale) : base(TcpOptionsKind.MaximumSegmentSize, 3)
     {
-        WindowScale = 3;
+        WindowScale = windowScale;
     }
 
     public byte WindowScale { get; }
+}
+
+public sealed class TcpOptionsSackPermitted : TcpOption
+{
+    public TcpOptionsSackPermitted() : base(TcpOptionsKind.SackPermitted, 2) { }
+}
+
+public sealed class TcpOptionsSack : TcpOption
+{
+    public TcpOptionsSack(int length, List<(uint, uint)> blocks) : base(TcpOptionsKind.SACK, length)
+    {
+        Blocks = blocks;
+    }
+
+    public List<(uint, uint)> Blocks { get; }
+}
+
+public sealed class TcpOptionsTimestamp : TcpOption
+{
+    public TcpOptionsTimestamp(uint timestampValue, uint timestampEchoReply) : base(TcpOptionsKind.TimeStamp, 10)
+    {
+        TimestampValue = timestampValue;
+        TimestampEchoReply = timestampEchoReply;
+    }
+
+    public uint TimestampValue { get; }
+    public uint TimestampEchoReply { get; }
+}
+
+public sealed class TcpOptionUserTimeout : TcpOption
+{
+    public TcpOptionUserTimeout(uint timeoutInMs) : base(TcpOptionsKind.UserTimeoutOption, 4)
+    {
+        TimeoutInMs = timeoutInMs;
+    }
+
+    public uint TimeoutInMs { get; }
+}
+
+public sealed class TcpOptionAuthenticated : TcpOption
+{
+    public TcpOptionAuthenticated() : base(TcpOptionsKind.TcpAuthentication, -1)
+    {
+        throw new ArgumentException("will be implemented later"); 
+    }
+}
+
+public sealed class TcpOptionMultipath : TcpOption
+{
+    public TcpOptionMultipath() : base(TcpOptionsKind.MultipathTcp, -1)
+    {
+        throw new ArgumentException("will be implemented later");
+    }
 }
