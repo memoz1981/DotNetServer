@@ -43,17 +43,19 @@ public class TcpHeaderParser : ITcpHeaderParser
 
     private void ReadTcpOptions(byte[] data, int start, TcpHeader header)
     {
-        while (true)
+        int startIndex = start; 
+        while (startIndex - start < header.OptionsLength)
         {
-            if (!TryParseTcpOption(data, start, out var option, out var nextIndex))
+            if (!TryParseTcpOption(data, startIndex, out var option, out var nextIndex))
                 break;
 
-            start = nextIndex;
+            startIndex = nextIndex;
             if(option is not null) //option is null for end of options / no op
                 header.AddOption(option);
         }
     }
 
+    //didn't bother much with exception handling here...
     private bool TryParseTcpOption(byte[] data, int index, out TcpOption option, out int nextIndex)
     {
         option = null;
@@ -65,37 +67,62 @@ public class TcpHeaderParser : ITcpHeaderParser
             return true;
         else if (data[index] == (byte)TcpOptionsKind.MaximumSegmentSize)
         {
-            option = new TcpOptionMss(data[index + 2]);
+            var mss = (ushort)(data[index + 2] << 8 | data[index + 3]);
+            option = new TcpOptionMss(mss);
             nextIndex = index + option.Length;
             return true;
         }
         else if (data[index] == (byte)TcpOptionsKind.WindowScale)
         {
-            option = new TcpOptionMss(data[index + 1]);
+            option = new TcpOptionWindowScale(data[index + 2]);
             nextIndex = index + option.Length;
             return true;
         }
         else if (data[index] == (byte)TcpOptionsKind.SackPermitted)
         {
-            option = new TcpOptionMss(data[index + 1]);
+            option = new TcpOptionsSackPermitted();
             nextIndex = index + option.Length;
             return true;
         }
         else if (data[index] == (byte)TcpOptionsKind.SACK)
         {
-            option = new TcpOptionMss(data[index + 1]);
+            var blocks = new List<(uint, uint)>();
+            var bytesAvailable = data[index + 1] - 2;
+            if (bytesAvailable > 0 && bytesAvailable % 8 == 0)
+            {
+                for (int i = 0; i < bytesAvailable; i += 8)
+                {
+                    var blockStart = (data[index + i + 2] << 24) |
+                        (data[index + i + 3] << 16) | (data[index + i + 4] << 8) | data[index + i + 5];
+
+                    var blockEnd = (data[index + i + 6] << 24) |
+                        (data[index + i + 7] << 16) | (data[index + i + 8] << 8) | data[index + i + 9];
+
+                    blocks.Add(((uint)blockStart, (uint)blockEnd));
+                }
+            }
+
+            option = new TcpOptionsSack(data[index + 1], blocks);
             nextIndex = index + option.Length;
             return true;
         }
         else if (data[index] == (byte)TcpOptionsKind.TimeStamp)
         {
-            option = new TcpOptionMss(data[index + 1]);
+            int i = 0; 
+            var tsVal = (data[index + i + 2] << 24) |
+                        (data[index + i + 3] << 16) | (data[index + i + 4] << 8) | data[index + i + 5];
+
+            var tsEcr = (data[index + i + 6] << 24) |
+                (data[index + i + 7] << 16) | (data[index + i + 8] << 8) | data[index + i + 9];
+
+            option = new TcpOptionsTimestamp((uint)tsVal, (uint)tsEcr);
             nextIndex = index + option.Length;
             return true;
         }
         else if (data[index] == (byte)TcpOptionsKind.UserTimeoutOption)
         {
-            option = new TcpOptionMss(data[index + 1]);
+            var timeoutInMs = data[index + 2] << 8 | data[index + 3];
+            option = new TcpOptionUserTimeout((uint)timeoutInMs);
             nextIndex = index + option.Length;
             return true;
         }
@@ -113,8 +140,6 @@ public class TcpHeaderParser : ITcpHeaderParser
         }
         else
             throw new InvalidOperationException($"Undefined tcp option type {data[index]}");
-
-
     }
 
     public void Encode(TcpHeader ipHeader, byte[] data, int startIndex, out int length)

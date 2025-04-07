@@ -1,4 +1,6 @@
-﻿namespace DotNetServer.TCP.TCP;
+﻿using System.Text;
+
+namespace DotNetServer.TCP.TCP;
 public abstract class TcpOption
 {
     protected TcpOption(TcpOptionsKind kind, int length)
@@ -9,6 +11,14 @@ public abstract class TcpOption
 
     public TcpOptionsKind Kind { get; }
     public int Length { get; }
+
+    public override string ToString()
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine($"Option kind: {Kind}");
+        builder.AppendLine($"Option length: {Length}");
+        return builder.ToString();
+    }
 }
 
 public sealed class TcpOptionNone : TcpOption
@@ -29,16 +39,34 @@ public sealed class TcpOptionMss : TcpOption
     }
 
     public ushort MaximumSegmentSize { get; }
+
+    public override string ToString()
+    {
+        var builder = new StringBuilder();
+        builder.Append(base.ToString());
+        builder.AppendLine($"Option maximumSegmentSize: {MaximumSegmentSize}");
+
+        return builder.ToString(); 
+    }
 }
 
 public sealed class TcpOptionWindowScale : TcpOption
 {
-    public TcpOptionWindowScale(byte windowScale) : base(TcpOptionsKind.MaximumSegmentSize, 3)
+    public TcpOptionWindowScale(byte windowScale) : base(TcpOptionsKind.WindowScale, 3)
     {
         WindowScale = windowScale;
     }
 
     public byte WindowScale { get; }
+
+    public override string ToString()
+    {
+        var builder = new StringBuilder();
+        builder.Append(base.ToString());
+        builder.AppendLine($"Option WindowScale: {WindowScale}");
+
+        return builder.ToString();
+    }
 }
 
 public sealed class TcpOptionsSackPermitted : TcpOption
@@ -54,6 +82,18 @@ public sealed class TcpOptionsSack : TcpOption
     }
 
     public List<(uint, uint)> Blocks { get; }
+
+    public override string ToString()
+    {
+        var builder = new StringBuilder();
+        builder.Append(base.ToString());
+        foreach (var item in Blocks)
+        {
+            builder.AppendLine($"Option block left: {item.Item1}; right: {item.Item2}");
+        }
+
+        return builder.ToString();
+    }
 }
 
 public sealed class TcpOptionsTimestamp : TcpOption
@@ -66,6 +106,16 @@ public sealed class TcpOptionsTimestamp : TcpOption
 
     public uint TimestampValue { get; }
     public uint TimestampEchoReply { get; }
+
+    public override string ToString()
+    {
+        var builder = new StringBuilder();
+        builder.Append(base.ToString());
+        builder.AppendLine($"Option TimestampValue: {TimestampValue}");
+        builder.AppendLine($"Option TimestampEchoReply: {TimestampEchoReply}");
+
+        return builder.ToString();
+    }
 }
 
 public sealed class TcpOptionUserTimeout : TcpOption
@@ -76,6 +126,15 @@ public sealed class TcpOptionUserTimeout : TcpOption
     }
 
     public uint TimeoutInMs { get; }
+
+    public override string ToString()
+    {
+        var builder = new StringBuilder();
+        builder.Append(base.ToString());
+        builder.AppendLine($"Option TimeoutInMs: {TimeoutInMs}");
+
+        return builder.ToString();
+    }
 }
 
 public sealed class TcpOptionAuthenticated : TcpOption

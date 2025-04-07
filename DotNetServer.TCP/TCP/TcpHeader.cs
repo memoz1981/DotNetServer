@@ -63,6 +63,9 @@ public class TcpHeader
         builder.AppendLine($"Checksum: {Checksum}");
         builder.AppendLine($"UrgentPointer: {UrgentPointer}");
         builder.AppendLine($"OptionsLength: {OptionsLength}");
+        foreach (var option in Options)
+            builder.Append(option.Value.ToString());
+
         builder.AppendLine("------- TCP Header End --------");
 
         return builder.ToString();
