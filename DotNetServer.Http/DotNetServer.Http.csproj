@@ -6,4 +6,8 @@
     <Nullable>disable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\DotNetServer.TCP\DotNetServer.TCP.csproj" />
+  </ItemGroup>
+
 </Project>
