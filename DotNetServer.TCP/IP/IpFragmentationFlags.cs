@@ -1,5 +1,5 @@
 ﻿namespace DotNetServer.TCP.IP;
-public enum IpFragmentationFlags
+public enum IpFragmentationFlags : byte
 {
-    None, DontFragment, MoreFragments
+    None = 0, DontFragment = 2, MoreFragments = 4
 }

@@ -89,35 +89,47 @@ public class IPv4HeaderParser : IIpHeaderParser
         if (ipv4.TotalLength < data.Length - startIndex)
             throw new InvalidOperationException($"Total data length of {ipv4.TotalLength} not sufficient in provided byte array...");
 
+        var index = startIndex;
+
         //version and ihl
-        data[startIndex] = 0; 
-        data[startIndex] = (byte)(((int)ipv4.Version << 4) | (ipv4.InternetHeaderLength & 0x0F));
+        data[index] = (byte)(((int)ipv4.Version << 4) | (ipv4.InternetHeaderLength & 0x0F));
 
         //dscp and ecn
-        startIndex++;
-        data[startIndex] = 0;
-        data[startIndex] = (byte)(((int)ipv4.DifferentiatedServicesCodePoint << 6) | (ipv4.ExplicitCongestionNotification & 0x03));
+        data[++index] = (byte)(((int)ipv4.DifferentiatedServicesCodePoint << 6) | (ipv4.ExplicitCongestionNotification & 0x03));
 
         //total length
-        startIndex++;
-        data[startIndex] = 0;
-        data[startIndex] = (byte)((ipv4.TotalLength >> 8) & 0xFF); // High byte
+        data[++index] = (byte)((ipv4.TotalLength >> 8) & 0xFF); // High byte
 
-        startIndex++;
-        data[startIndex] = 0;
-        data[startIndex] = (byte)(ipv4.TotalLength & 0xFF); // Low byte
+        data[++index] = (byte)(ipv4.TotalLength & 0xFF); // Low byte
 
         //identification
-        startIndex++;
-        data[startIndex] = 0;
-        data[startIndex] = (byte)((ipv4.Identification >> 8) & 0xFF); // High byte
+        data[++index] = (byte)((ipv4.Identification >> 8) & 0xFF); // High byte
+        data[++index] = (byte)(ipv4.Identification & 0xFF); // Low byte
 
-        startIndex++;
-        data[startIndex] = 0;
-        data[startIndex] = (byte)(ipv4.Identification & 0xFF); // Low byte
+        //flags and fragment offset
+        data[++index] = (byte)((byte)ipv4.Flags | (ipv4.FragmentOffset >> 8 & 0x1F));
+        data[++index] = (byte)(ipv4.FragmentOffset & 0xFF);
 
+        //time to live
+        data[++index] = ipv4.TimeToLive;
 
+        //protocol
+        data[++index] = (byte)ipv4.Protocol;
 
+        //header checksum
+        data[++index] = (byte)((ipv4.HeaderChecksum >> 8) & 0xFF); // High byte
+        data[++index] = (byte)(ipv4.HeaderChecksum & 0xFF); // Low byte
 
+        //source address
+        byte[] sourceAddressBytes = ipv4.SourceAddress.GetAddressBytes(); // Returns bytes in correct order
+        Buffer.BlockCopy(sourceAddressBytes, 0, data, index, 4);
+        index += 4;
+
+        //destination address
+        byte[] destAddressBytes = ipv4.SourceAddress.GetAddressBytes(); // Returns bytes in correct order
+        Buffer.BlockCopy(destAddressBytes, 0, data, index, 4);
+        index += 4;
+
+        length = index - startIndex;
     }
 }
