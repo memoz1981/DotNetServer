@@ -4,7 +4,6 @@ namespace DotNetServer.TCP.IP;
 public interface IIpHeaderParser
 {
     IpHeader Decode(byte[] data, out int length);
-
     void Encode(IpHeader ipHeader, byte[] data, int startIndex, out int length); 
 }
 
@@ -79,5 +78,46 @@ public class IPv4HeaderParser : IIpHeaderParser
 
 
     public void Encode(IpHeader ipHeader, byte[] data, int startIndex, out int length)
-        => throw new NotImplementedException();
+    {
+        if (ipHeader is not IPv4Header)
+            throw new ArgumentException("This class is IPv4 only...");
+
+        var ipv4 = (IPv4Header)ipHeader;
+
+        var lengthRequired = ipv4.HeaderLength;
+
+        if (ipv4.TotalLength < data.Length - startIndex)
+            throw new InvalidOperationException($"Total data length of {ipv4.TotalLength} not sufficient in provided byte array...");
+
+        //version and ihl
+        data[startIndex] = 0; 
+        data[startIndex] = (byte)(((int)ipv4.Version << 4) | (ipv4.InternetHeaderLength & 0x0F));
+
+        //dscp and ecn
+        startIndex++;
+        data[startIndex] = 0;
+        data[startIndex] = (byte)(((int)ipv4.DifferentiatedServicesCodePoint << 6) | (ipv4.ExplicitCongestionNotification & 0x03));
+
+        //total length
+        startIndex++;
+        data[startIndex] = 0;
+        data[startIndex] = (byte)((ipv4.TotalLength >> 8) & 0xFF); // High byte
+
+        startIndex++;
+        data[startIndex] = 0;
+        data[startIndex] = (byte)(ipv4.TotalLength & 0xFF); // Low byte
+
+        //identification
+        startIndex++;
+        data[startIndex] = 0;
+        data[startIndex] = (byte)((ipv4.Identification >> 8) & 0xFF); // High byte
+
+        startIndex++;
+        data[startIndex] = 0;
+        data[startIndex] = (byte)(ipv4.Identification & 0xFF); // Low byte
+
+
+
+
+    }
 }
