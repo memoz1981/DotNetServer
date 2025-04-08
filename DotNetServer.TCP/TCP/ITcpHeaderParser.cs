@@ -3,7 +3,7 @@ public interface ITcpHeaderParser
 {
     TcpHeader Decode(byte[] data, int startIndex, out int length);
 
-    void Encode(TcpHeader ipHeader, byte[] data, int startIndex, out int length);
+    void Encode(TcpHeader tcpHeader, byte[] data, int startIndex, out int length);
 }
 
 public class TcpHeaderParser : ITcpHeaderParser
@@ -142,6 +142,53 @@ public class TcpHeaderParser : ITcpHeaderParser
             throw new InvalidOperationException($"Undefined tcp option type {data[index]}");
     }
 
-    public void Encode(TcpHeader ipHeader, byte[] data, int startIndex, out int length)
-        => throw new NotImplementedException();
+    public void Encode(TcpHeader tcpHeader, byte[] data, int startIndex, out int length)
+    {
+        //validations
+        if (tcpHeader.TcpHeaderLength + startIndex > data.Length)
+            throw new ArgumentException($"Provided data array length not enough {data.Length}, " +
+                $"required length: {tcpHeader.TcpHeaderLength + startIndex}");
+
+        var index = startIndex;
+
+        //source port
+        data[index++] = (byte)(tcpHeader.SourcePort >> 8);
+        data[index++] = (byte)(tcpHeader.SourcePort & 0xFF);
+
+        //destination port
+        data[index++] = (byte)(tcpHeader.DestinationPort >> 8);
+        data[index++] = (byte)(tcpHeader.DestinationPort & 0xFF);
+
+        //sequence number
+        data[index++] = (byte)(tcpHeader.SequenceNumber >> 24);
+        data[index++] = (byte)(tcpHeader.SequenceNumber >> 16);
+        data[index++] = (byte)(tcpHeader.SequenceNumber >> 8);
+        data[index++] = (byte)(tcpHeader.SequenceNumber & 0xFF);
+
+        //acknowledgement number
+        data[index++] = (byte)(tcpHeader.AcknowledgementNumber >> 24);
+        data[index++] = (byte)(tcpHeader.AcknowledgementNumber >> 16);
+        data[index++] = (byte)(tcpHeader.AcknowledgementNumber >> 8);
+        data[index++] = (byte)(tcpHeader.AcknowledgementNumber & 0xFF);
+
+        //data offset (&reserved)
+        data[index++] = (byte)(tcpHeader.DataOffset << 4 & 0x10);
+
+        //flags
+        data[index++] = (byte)tcpHeader.Flags;
+
+        //window
+        data[index++] = (byte)(tcpHeader.Window >> 8);
+        data[index++] = (byte)(tcpHeader.Window & 0xFF);
+
+        //checksum
+        data[index++] = (byte)(tcpHeader.Checksum >> 8);
+        data[index++] = (byte)(tcpHeader.Checksum & 0xFF);
+
+        //urgent pointer
+        data[index++] = (byte)(tcpHeader.UrgentPointer >> 8);
+        data[index++] = (byte)(tcpHeader.UrgentPointer & 0xFF);
+
+        length = -1; 
+    }
 }
