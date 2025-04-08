@@ -18,13 +18,28 @@ public class IpHeaderParserTests
     public void ShouldBeAbleTo_EncodeAndDecode_Successfully()
     {
         //arrange
-        var ipHeader = new IPv4Header(IpVersion.IPv4, new IPAddress([127, 0, 0, 1]),
-            new IPAddress([255, 255, 1, 0]), 5, 110, 220, 54321, 1234567, IpFragmentationFlags.DontFragment,
-            0, 120, Protocols.TCP, 12000, null);
+        var ipHeader = new IPv4Header(
+            version: IpVersion.IPv4,
+            sourceAddress: new IPAddress([127, 0, 0, 1]),
+            destinationAddress: new IPAddress([255, 255, 1, 0]),
+            internetHeaderLength: 5,
+            differentiatedServicesCodePoint: 10,
+            explicitCongestionNotification: 1,
+            totalLength: 54321,
+            identification: 12345,
+            flags: IpFragmentationFlags.DontFragment,
+            fragmentOffset: 0,
+            timeToLive: 120,
+            protocol: Protocols.TCP,
+            headerChecksum: 12000,
+            options: null);
         byte[] data = new byte[20];
 
         //act
         _ipHeaderParser.Encode(ipHeader, data, 0, out var length);
+
+        var stringRep = string.Join(',', data); 
+
         var parsedHeader = _ipHeaderParser.Decode(data, out var lengthParsed);
 
         //assert
@@ -48,5 +63,4 @@ public class IpHeaderParserTests
         parsedHeaderIpv4.HeaderChecksum.ShouldBe(ipHeader.HeaderChecksum);
         parsedHeaderIpv4.Options.ShouldBe(ipHeader.Options);
     }
-
 }

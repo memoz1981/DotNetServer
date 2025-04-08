@@ -95,7 +95,8 @@ public class IPv4HeaderParser : IIpHeaderParser
         data[index] = (byte)(((int)ipv4.Version << 4) | (ipv4.InternetHeaderLength & 0x0F));
 
         //dscp and ecn
-        data[++index] = (byte)(((int)ipv4.DifferentiatedServicesCodePoint << 6) | (ipv4.ExplicitCongestionNotification & 0x03));
+        data[++index] = (byte)(((int)ipv4.DifferentiatedServicesCodePoint << 2)
+            | (ipv4.ExplicitCongestionNotification & 0x03));
 
         //total length
         data[++index] = (byte)((ipv4.TotalLength >> 8) & 0xFF); // High byte
@@ -107,7 +108,7 @@ public class IPv4HeaderParser : IIpHeaderParser
         data[++index] = (byte)(ipv4.Identification & 0xFF); // Low byte
 
         //flags and fragment offset
-        data[++index] = (byte)((byte)ipv4.Flags | (ipv4.FragmentOffset >> 8 & 0x1F));
+        data[++index] = (byte)(((byte)ipv4.Flags << 5) | (ipv4.FragmentOffset >> 8 & 0x1F));
         data[++index] = (byte)(ipv4.FragmentOffset & 0xFF);
 
         //time to live

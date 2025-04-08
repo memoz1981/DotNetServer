@@ -30,7 +30,7 @@ public sealed class IPv4Header : IpHeader
         TimeToLive = timeToLive;
         Protocol = protocol;
         HeaderChecksum = headerChecksum;
-        Options = options;
+        Options = options ?? [];
     }
 
 
