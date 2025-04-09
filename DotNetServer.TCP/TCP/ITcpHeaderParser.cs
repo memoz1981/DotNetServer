@@ -1,4 +1,6 @@
-﻿namespace DotNetServer.TCP.TCP;
+﻿using System.Net.Http.Headers;
+
+namespace DotNetServer.TCP.TCP;
 public interface ITcpHeaderParser
 {
     TcpHeader Decode(byte[] data, int startIndex, out int length);
@@ -58,13 +60,18 @@ public class TcpHeaderParser : ITcpHeaderParser
     //didn't bother much with exception handling here...
     private bool TryParseTcpOption(byte[] data, int index, out TcpOption option, out int nextIndex)
     {
-        option = null;
-        nextIndex = index + 1;
-
         if (data[index] == (byte)TcpOptionsKind.EndOfOptionsList)
+        {
+            option = new TcpOptionNone();
+            nextIndex = index + option.Length;
             return true;
+        }
         else if (data[index] == (byte)TcpOptionsKind.NoOp)
+        {
+            option = new TcpOptionNoOp();
+            nextIndex = index + option.Length;
             return true;
+        }
         else if (data[index] == (byte)TcpOptionsKind.MaximumSegmentSize)
         {
             var mss = (ushort)(data[index + 2] << 8 | data[index + 3]);
@@ -128,13 +135,13 @@ public class TcpHeaderParser : ITcpHeaderParser
         }
         else if (data[index] == (byte)TcpOptionsKind.TcpAuthentication)
         {
-            option = new TcpOptionMss(data[index + 1]);
+            option = new TcpOptionAuthenticated();
             nextIndex = index + option.Length;
             return true;
         }
         else if (data[index] == (byte)TcpOptionsKind.MultipathTcp)
         {
-            option = new TcpOptionMss(data[index + 1]);
+            option = new TcpOptionMultipath();
             nextIndex = index + option.Length;
             return true;
         }

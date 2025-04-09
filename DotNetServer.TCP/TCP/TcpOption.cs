@@ -15,7 +15,7 @@ public abstract class TcpOption
     public override string ToString()
     {
         var builder = new StringBuilder();
-        builder.AppendLine($"Option kind: {Kind}");
+        builder.AppendLine($"-------------Option kind: {Kind}--------------");
         builder.AppendLine($"Option length: {Length}");
         return builder.ToString();
     }
