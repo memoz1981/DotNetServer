@@ -98,7 +98,8 @@ public sealed class TcpOptionsSack : TcpOption
 
 public sealed class TcpOptionsTimestamp : TcpOption
 {
-    public TcpOptionsTimestamp(uint timestampValue, uint timestampEchoReply) : base(TcpOptionsKind.TimeStamp, 10)
+    public TcpOptionsTimestamp(uint timestampValue, uint timestampEchoReply)
+        : base(TcpOptionsKind.TimeStamp, 10)
     {
         TimestampValue = timestampValue;
         TimestampEchoReply = timestampEchoReply;
@@ -120,12 +121,12 @@ public sealed class TcpOptionsTimestamp : TcpOption
 
 public sealed class TcpOptionUserTimeout : TcpOption
 {
-    public TcpOptionUserTimeout(uint timeoutInMs) : base(TcpOptionsKind.UserTimeoutOption, 4)
+    public TcpOptionUserTimeout(ushort timeoutInMs) : base(TcpOptionsKind.UserTimeoutOption, 4)
     {
         TimeoutInMs = timeoutInMs;
     }
 
-    public uint TimeoutInMs { get; }
+    public ushort TimeoutInMs { get; }
 
     public override string ToString()
     {

@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Headers;
+﻿using DotNetServer.TCP.Extensions;
 
 namespace DotNetServer.TCP.TCP;
 public interface ITcpHeaderParser
@@ -129,7 +129,7 @@ public class TcpHeaderParser : ITcpHeaderParser
         else if (data[index] == (byte)TcpOptionsKind.UserTimeoutOption)
         {
             var timeoutInMs = data[index + 2] << 8 | data[index + 3];
-            option = new TcpOptionUserTimeout((uint)timeoutInMs);
+            option = new TcpOptionUserTimeout((ushort)timeoutInMs);
             nextIndex = index + option.Length;
             return true;
         }
@@ -196,6 +196,69 @@ public class TcpHeaderParser : ITcpHeaderParser
         data[index++] = (byte)(tcpHeader.UrgentPointer >> 8);
         data[index++] = (byte)(tcpHeader.UrgentPointer & 0xFF);
 
-        length = -1; 
+        foreach (var option in tcpHeader.Options)
+        {
+            EncodeOption(data, ref index, option); 
+        }
+
+        length = index;
+    }
+
+    private void EncodeOption(byte[] data, ref int index, TcpOption option)
+    {
+        //write the kind
+        data[index++] = (byte)option.Kind;
+
+        switch (option.Kind)
+        {
+            case TcpOptionsKind.EndOfOptionsList:
+            case TcpOptionsKind.NoOp:
+                break; //only 1 byte of data
+
+            case TcpOptionsKind.MaximumSegmentSize:
+                var optionMss = (TcpOptionMss)option; 
+                data[index++] = (byte)optionMss.Length;
+                optionMss.MaximumSegmentSize.WriteUShortBigEndian(data, ref index);
+                break;
+
+            case TcpOptionsKind.WindowScale:
+                var optionWindowScale = (TcpOptionWindowScale)option;
+                data[index++] = (byte)option.Length;
+                data[index++] = optionWindowScale.WindowScale;
+                break;
+
+            case TcpOptionsKind.SackPermitted:
+                var optionSackPermitted = (TcpOptionsSackPermitted)option;
+                data[index++] = (byte)option.Length;
+                break;
+
+            case TcpOptionsKind.SACK:
+                var optionSack = (TcpOptionsSack)option;
+                data[index++] = (byte)option.Length;
+                foreach (var value in optionSack.Blocks)
+                {
+                    value.Item1.WriteUInt32BigEndian(data, ref index);
+                    value.Item2.WriteUInt32BigEndian(data, ref index);
+                }
+                break;
+
+            case TcpOptionsKind.TimeStamp:
+                var optionTimestamp = (TcpOptionsTimestamp)option;
+                data[index++] = (byte)option.Length;
+                optionTimestamp.TimestampValue.WriteUInt32BigEndian(data, ref index);
+                optionTimestamp.TimestampEchoReply.WriteUInt32BigEndian(data, ref index);
+                break;
+
+            case TcpOptionsKind.UserTimeoutOption:
+                var optionUserTimeout = (TcpOptionUserTimeout)option;
+                data[index++] = (byte)option.Length;
+                optionUserTimeout.TimeoutInMs.WriteUShortBigEndian(data, ref index);
+                break;
+
+            //authenticated and multipart not implemented...
+
+            default:
+                throw new InvalidOperationException();
+        };
     }
 }
