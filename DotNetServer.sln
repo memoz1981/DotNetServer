@@ -15,8 +15,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionItems", "SolutionIt
 		Directory.Packages.props = Directory.Packages.props
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetServer.Debug", "DotNetServer.Debug\DotNetServer.Debug.csproj", "{A31C6B6E-718A-446C-9A42-872C76060B65}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,10 +33,6 @@ Global
 		{FDC40E3B-AC51-4307-9CE0-1752141AFB97}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FDC40E3B-AC51-4307-9CE0-1752141AFB97}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FDC40E3B-AC51-4307-9CE0-1752141AFB97}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A31C6B6E-718A-446C-9A42-872C76060B65}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A31C6B6E-718A-446C-9A42-872C76060B65}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A31C6B6E-718A-446C-9A42-872C76060B65}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A31C6B6E-718A-446C-9A42-872C76060B65}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
