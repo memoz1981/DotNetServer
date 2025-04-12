@@ -56,5 +56,31 @@ public class TcpHeaderParserTests
         decodedHeader.UrgentPointer.ShouldBe(header.UrgentPointer);
 
         decodedHeader.Options.Count.ShouldBe(header.Options.Count);
+        decodedHeader.Options[0].ShouldBeOfType<TcpOptionNone>();
+
+        decodedHeader.Options[1].ShouldBeOfType<TcpOptionNoOp>();
+
+        decodedHeader.Options[2].ShouldBeOfType<TcpOptionMss>();
+        ((TcpOptionMss)decodedHeader.Options[2]).MaximumSegmentSize.ShouldBe((ushort)9856);
+
+        decodedHeader.Options[3].ShouldBeOfType<TcpOptionWindowScale>();
+        ((TcpOptionWindowScale)decodedHeader.Options[3]).WindowScale.ShouldBe((byte)234);
+
+        decodedHeader.Options[4].ShouldBeOfType<TcpOptionsSackPermitted>();
+
+        decodedHeader.Options[5].ShouldBeOfType<TcpOptionsSack>();
+        var block = ((TcpOptionsSack)decodedHeader.Options[5]).Blocks;
+        block.Count.ShouldBe(1);
+        block.First().Item1.ShouldBe((uint)5678123);
+        block.First().Item2.ShouldBe((uint)1234876); 
+
+        decodedHeader.Options[6].ShouldBeOfType<TcpOptionsTimestamp>();
+        ((TcpOptionsTimestamp)decodedHeader.Options[6]).TimestampValue.ShouldBe((uint)1357246);
+        ((TcpOptionsTimestamp)decodedHeader.Options[6]).TimestampEchoReply.ShouldBe((uint)2468135);
+
+        decodedHeader.Options[7].ShouldBeOfType<TcpOptionUserTimeout>();
+        ((TcpOptionUserTimeout)decodedHeader.Options[7]).TimeoutInMs.ShouldBe((ushort)12567);
+
+        decodedHeader.Options[8].ShouldBeOfType<TcpOptionNone>();
     }
 }
