@@ -14,4 +14,9 @@ public static class BigEndianExtensions
         data[index++] = (byte)((value >> 8) & 0xFF);
         data[index++] = (byte)(value & 0xFF);
     }
+
+    public static uint ReadUIntFromBigEndianArray(this byte[] data, int startIndex)
+    {
+        return (uint)(data[startIndex++] << 24 | data[startIndex++] << 16 | data[startIndex++] << 8 | data[startIndex++]); 
+    }
 }

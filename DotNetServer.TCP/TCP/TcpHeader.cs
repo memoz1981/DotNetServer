@@ -11,8 +11,8 @@ public class TcpHeader
         byte dataOffset,
         TcpHeaderFlags flags,
         int window,
-        int checksum,
-        int urgentPointer)
+        ushort checksum,
+        ushort urgentPointer)
     {
         SourcePort = sourcePort;
         DestinationPort = destinationPort;
@@ -36,8 +36,8 @@ public class TcpHeader
     public int TcpHeaderLength { get => DataOffset * 4; }
     public TcpHeaderFlags Flags { get; }
     public int Window { get; }
-    public int Checksum { get; }
-    public int UrgentPointer { get; }
+    public ushort Checksum { get; }
+    public ushort UrgentPointer { get; }
     //placeholder property to sort out options - for now skipping. 
     public int OptionsLength { get => TcpHeaderLength - 20; }
     public List<TcpOption> Options { get; }

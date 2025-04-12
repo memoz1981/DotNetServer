@@ -17,8 +17,8 @@ public class TcpHeaderParserTests
             dataOffset: 14,//20 bytes (5 words) header + 36 bytes (9 words) options
             flags: TcpHeaderFlags.SYN | TcpHeaderFlags.ACK | TcpHeaderFlags.FIN,
             window: 20202,
-            checksum: 9876543,
-            urgentPointer: 1234567);
+            checksum: 5644,
+            urgentPointer: 5645);
 
         //add options
         header.AddOption(new TcpOptionNone()); // 1 byte (actually this option should go to end, but this is test only
@@ -38,11 +38,23 @@ public class TcpHeaderParserTests
         var stringRep = string.Join(',', data); 
 
         //act - decode back
-        var headerDecoded = parser.Decode(data, 0, out var lengthDecoded);
+        var decodedHeader = parser.Decode(data, 0, out var lengthDecoded);
 
         //assert
-        headerDecoded.ShouldNotBeNull();
+        decodedHeader.ShouldNotBeNull();
         length.ShouldBe(56);
-        lengthDecoded.ShouldBe(56); 
+        lengthDecoded.ShouldBe(56);
+
+        decodedHeader.SourcePort.ShouldBe(header.SourcePort);
+        decodedHeader.DestinationPort.ShouldBe(header.DestinationPort);
+        decodedHeader.SequenceNumber.ShouldBe(header.SequenceNumber);
+        decodedHeader.AcknowledgementNumber.ShouldBe(header.AcknowledgementNumber);
+        decodedHeader.DataOffset.ShouldBe(header.DataOffset);
+        decodedHeader.Flags.ShouldBe(header.Flags);
+        decodedHeader.Window.ShouldBe(header.Window);
+        decodedHeader.Checksum.ShouldBe(header.Checksum);
+        decodedHeader.UrgentPointer.ShouldBe(header.UrgentPointer);
+
+        decodedHeader.Options.Count.ShouldBe(header.Options.Count);
     }
 }
