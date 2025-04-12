@@ -37,19 +37,25 @@ public class TcpHeaderParser : ITcpHeaderParser
         {
             var start = startIndex + 20;
 
-            ReadTcpOptions(data, start, header);
+            ReadTcpOptions(data, start, header, out var nextIndex);
+
+            if (length != nextIndex)
+                throw new InvalidOperationException($"Calculated index {nextIndex} doesn't match with tcp header length {length}...");
         }
 
         return header;
     }
 
-    private void ReadTcpOptions(byte[] data, int start, TcpHeader header)
+    private void ReadTcpOptions(byte[] data, int start, TcpHeader header, out int index)
     {
+        index = start; 
         int startIndex = start; 
         while (startIndex - start < header.OptionsLength)
         {
             if (!TryParseTcpOption(data, startIndex, out var option, out var nextIndex))
                 break;
+
+            index = nextIndex; 
 
             startIndex = nextIndex;
             if(option is not null) //option is null for end of options / no op
@@ -109,7 +115,7 @@ public class TcpHeaderParser : ITcpHeaderParser
                 }
             }
 
-            option = new TcpOptionsSack(data[index + 1], blocks);
+            option = new TcpOptionsSack(blocks);
             nextIndex = index + option.Length;
             return true;
         }
@@ -179,7 +185,7 @@ public class TcpHeaderParser : ITcpHeaderParser
         data[index++] = (byte)(tcpHeader.AcknowledgementNumber & 0xFF);
 
         //data offset (&reserved)
-        data[index++] = (byte)(tcpHeader.DataOffset << 4 & 0x10);
+        data[index++] = (byte)(tcpHeader.DataOffset << 4 & 0xF0);
 
         //flags
         data[index++] = (byte)tcpHeader.Flags;

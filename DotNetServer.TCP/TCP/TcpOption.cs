@@ -76,9 +76,9 @@ public sealed class TcpOptionsSackPermitted : TcpOption
 
 public sealed class TcpOptionsSack : TcpOption
 {
-    public TcpOptionsSack(int length, List<(uint, uint)> blocks) : base(TcpOptionsKind.SACK, length)
+    public TcpOptionsSack(List<(uint, uint)> blocks) : base(TcpOptionsKind.SACK, 2 + 8 * (blocks?.Count ?? 0))
     {
-        Blocks = blocks;
+        Blocks = blocks; 
     }
 
     public List<(uint, uint)> Blocks { get; }
