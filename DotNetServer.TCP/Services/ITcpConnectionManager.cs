@@ -39,7 +39,23 @@ public class TcpConnectionManager : ITcpConnectionManager
         }
     }
 
-    public async Task Send(HttpData httpData) => throw new NotImplementedException();
+    public async Task Send(HttpData httpData)
+    {
+        // first check if the tcp connection exists
+        var tcpConnectionKey = new TcpConnectionKey(httpData.TcpData.IpHeader.SourceAddress, httpData.TcpData.IpHeader.DestinationAddress,
+            httpData.TcpData.TcpHeader.SourcePort, httpData.TcpData.TcpHeader.DestinationPort);
+
+        if (!_connectionDictionary.TryGetValue(tcpConnectionKey, out var connection))
+            throw new InvalidOperationException("No active connections to specified source ip/port...");//include details
+
+        var tcpData = await connection.Send(httpData);
+        byte[] serialized = Serialize(tcpData);
+
+        var ipEndPoint = new IPEndPoint(tcpConnectionKey.SourceIpAddress, tcpConnectionKey.SourcePort); 
+        await _listenerService.SendAsync(serialized, ipEndPoint); 
+    }
+
+    private byte[] Serialize(TcpData tcpData) => throw new NotImplementedException();
 
     private async Task<(HttpData httpData, bool shouldReturn)> HandleRequest(BufferData dataReceived, IPAddress ipAddress, int port)
     {
