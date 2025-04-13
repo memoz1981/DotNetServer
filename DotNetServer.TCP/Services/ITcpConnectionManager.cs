@@ -9,7 +9,8 @@ namespace DotNetServer.TCP.Services;
 public interface ITcpConnectionManager
 {
     IAsyncEnumerable<HttpData> Subcribe(IPAddress ipAddress, int port, CancellationToken cancellationToken);
-    Task Send(HttpData httpData); 
+    Task Send(HttpData httpData);
+    Task Send(TcpData tcpData);
 }
 
 public class TcpConnectionManager : ITcpConnectionManager
@@ -55,6 +56,21 @@ public class TcpConnectionManager : ITcpConnectionManager
         await _listenerService.SendAsync(serialized, ipEndPoint); 
     }
 
+    public async Task Send(TcpData tcpData)
+    {
+        // first check if the tcp connection exists
+        var tcpConnectionKey = new TcpConnectionKey(tcpData.IpHeader.SourceAddress, tcpData.IpHeader.DestinationAddress,
+            tcpData.TcpHeader.SourcePort, tcpData.TcpHeader.DestinationPort);
+
+        if (!_connectionDictionary.TryGetValue(tcpConnectionKey, out var connection))
+            throw new InvalidOperationException("No active connections to specified source ip/port...");//include details
+
+        byte[] serialized = Serialize(tcpData);
+
+        var ipEndPoint = new IPEndPoint(tcpConnectionKey.SourceIpAddress, tcpConnectionKey.SourcePort);
+        await _listenerService.SendAsync(serialized, ipEndPoint);
+    }
+
     private byte[] Serialize(TcpData tcpData)
     {
         if (tcpData.IpHeader is not IPv4Header)
@@ -67,7 +83,6 @@ public class TcpConnectionManager : ITcpConnectionManager
         var startIndex = tcpData.DataIndexStart ?? 0;
 
         //validate lengths
-
         if (data.Length - startIndex != dataLength)
             throw new InvalidOperationException("Data length mismatch...details..."); 
 
@@ -78,7 +93,9 @@ public class TcpConnectionManager : ITcpConnectionManager
 
         _ipHeaderParser.Encode(ipHeader, buffer, 0, out var tcpStartIndex);
         _tcpHeaderParser.Encode(tcpHeader, buffer, tcpStartIndex, out var dataStartIndex);
-        Array.Copy(data, startIndex, buffer, dataStartIndex, dataLength);
+
+        if(dataLength != 0)
+            Array.Copy(data, startIndex, buffer, dataStartIndex, dataLength);
 
         return buffer;
     }
@@ -146,7 +163,7 @@ public class TcpConnectionManager : ITcpConnectionManager
         var userTimeoutOption = tcpHeader.Options.SingleOrDefault(op => op.Kind == TcpOptionsKind.UserTimeoutOption) as TcpOptionUserTimeout;
 
         // this should also trigger sending a Syn-Ack message back to client...
-        return new TcpConnection(connectionKey, TcpConnectionState.SynReceived, mssOption?.MaximumSegmentSize,
+        return new TcpConnection(this, connectionKey, TcpConnectionState.SynReceived, mssOption?.MaximumSegmentSize,
             windowScaleOption?.WindowScale, sackPermitted, sackOption?.Blocks,
             timeStampOption?.TimestampValue, timeStampOption?.TimestampEchoReply, userTimeoutOption?.TimeoutInMs); 
     }

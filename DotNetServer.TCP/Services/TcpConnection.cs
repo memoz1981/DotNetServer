@@ -5,6 +5,7 @@
 public class TcpConnection 
 {
     public TcpConnection(
+        ITcpConnectionManager connectionManager,
         TcpConnectionKey key,
         TcpConnectionState state,
         ushort? maximumSegmentSize,
@@ -24,6 +25,7 @@ public class TcpConnection
         TimestampValue = timestampValue;
         TimestampEchoReply = timestampEchoReply;
         TimeoutInMs = timeoutInMs;
+        _connectionManager = connectionManager;
     }
 
     public TcpConnectionKey Key { get; }
@@ -35,6 +37,7 @@ public class TcpConnection
     public uint? TimestampValue { get; }
     public uint? TimestampEchoReply { get; }
     public ushort? TimeoutInMs { get; }
+    private readonly ITcpConnectionManager _connectionManager;
 
     public async Task<(HttpData httpData, bool shouldReturn, bool shouldDropConnection)> HandleRequest(TcpData tcpData) =>
         throw new NotImplementedException();
