@@ -21,11 +21,11 @@ public class TcpConnectionManager : ITcpConnectionManager
 
     public TcpConnectionManager(IPacketListenerService listenerService)
     {
-        _listenerService = listenerService; 
+        _listenerService = listenerService;
     }
 
     public async IAsyncEnumerable<HttpData> Subcribe(IPAddress ipAddress, int port,
-        [EnumeratorCancellation]CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await foreach (var dataReceived in _listenerService.Subscribe(ipAddress, port, cancellationToken))
         {
@@ -35,7 +35,7 @@ public class TcpConnectionManager : ITcpConnectionManager
             var result = await HandleRequest(dataReceived, ipAddress, port);
 
             if (result.shouldReturn)
-                yield return result.httpData; 
+                yield return result.httpData;
         }
     }
 
@@ -45,7 +45,7 @@ public class TcpConnectionManager : ITcpConnectionManager
     {
         //validate data length
         if (dataReceived.length < 40)
-            return (default, false); 
+            return (default, false);
 
         // extract ip header
         var ipHeader = _ipHeaderParser.Decode(dataReceived.data, out var tcpStartIndex);
@@ -53,15 +53,15 @@ public class TcpConnectionManager : ITcpConnectionManager
         if (ipHeader is not IPv4Header)
             return (default, false);
 
-        var ipv4 = (IPv4Header)ipHeader; 
+        var ipv4 = (IPv4Header)ipHeader;
 
-        if(ipv4.Protocol != Protocols.TCP)
+        if (ipv4.Protocol != Protocols.TCP)
             return (default, false);
 
         // extract tcp header
         var tcpHeader = _tcpHeaderParser.Decode(dataReceived.data, tcpStartIndex, out var nextIndex);
 
-        if(tcpHeader.DestinationPort != port)
+        if (tcpHeader.DestinationPort != port)
             return (default, false);
 
         // check dictionary
@@ -74,11 +74,35 @@ public class TcpConnectionManager : ITcpConnectionManager
 
         //handle
         int? dataIndexStart = nextIndex >= dataReceived.length ? null : nextIndex;
-        var tcpData = new TcpData(ipv4, tcpHeader, dataReceived, dataIndexStart); 
+        var tcpData = new TcpData(ipv4, tcpHeader, dataReceived, dataIndexStart);
         var result = await _connectionDictionary[key].HandleRequest(tcpData);
 
-        return result; 
+        return result;
     }
 
-    private TcpConnection CreateConnection(IPv4Header ipHeader, TcpHeader tcpHeader) => throw new NotImplementedException();
+    private TcpConnection CreateConnection(IPv4Header ipHeader, TcpHeader tcpHeader)
+    {
+        var connectionKey = new TcpConnectionKey(ipHeader.SourceAddress, ipHeader.DestinationAddress,
+            tcpHeader.SourcePort, tcpHeader.DestinationPort);
+
+        if ((byte)tcpHeader.Flags != 0x010)
+            throw new ArgumentException($"Expect a SYN package on new connection, but was {tcpHeader.Flags}");
+
+        var mssOption = tcpHeader.Options.SingleOrDefault(op => op.Kind == TcpOptionsKind.MaximumSegmentSize) as TcpOptionMss;
+
+        var windowScaleOption = tcpHeader.Options.SingleOrDefault(op => op.Kind == TcpOptionsKind.WindowScale) as TcpOptionWindowScale;
+
+        var sackPermitted = tcpHeader.Options.Any(op => op.Kind == TcpOptionsKind.SackPermitted);
+
+        var sackOption = tcpHeader.Options.SingleOrDefault(op => op.Kind == TcpOptionsKind.SACK) as TcpOptionsSack;
+
+        var timeStampOption = tcpHeader.Options.SingleOrDefault(op => op.Kind == TcpOptionsKind.TimeStamp) as TcpOptionsTimestamp;
+
+        var userTimeoutOption = tcpHeader.Options.SingleOrDefault(op => op.Kind == TcpOptionsKind.UserTimeoutOption) as TcpOptionUserTimeout;
+
+        // this should also trigger sending a Syn-Ack message back to client...
+        return new TcpConnection(connectionKey, TcpConnectionState.SynReceived, mssOption?.MaximumSegmentSize,
+            windowScaleOption?.WindowScale, sackPermitted, sackOption?.Blocks,
+            timeStampOption?.TimestampValue, timeStampOption?.TimestampEchoReply, userTimeoutOption?.TimeoutInMs); 
+    }
 }
