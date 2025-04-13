@@ -7,6 +7,7 @@ namespace DotNetServer.TCP.Services;
 /// </summary>
 public interface IPacketListenerService
 {
-    IAsyncEnumerable<(byte[] data, int length)> Subscribe(IPAddress ipAddressToListen, int portToListen, CancellationToken cancellationToken);
-    Task SendAsync(byte[] dataToSend, int length, IPAddress destinationIpAddress, int destinationPort); 
+    IAsyncEnumerable<BufferData> Subscribe(IPAddress ipAddressToListen,
+        int portToListen, CancellationToken cancellationToken);
+    Task SendAsync(byte[] dataToSend, IPAddress destinationIpAddress, int destinationPort); 
 }
