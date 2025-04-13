@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Net;
+using System.Runtime.CompilerServices;
 using DotNetServer.TCP.IP;
 using DotNetServer.TCP.TCP;
 
@@ -23,7 +24,8 @@ public class TcpConnectionManager : ITcpConnectionManager
         _listenerService = listenerService; 
     }
 
-    public async IAsyncEnumerable<HttpData> Subcribe(IPAddress ipAddress, int port, CancellationToken cancellationToken)
+    public async IAsyncEnumerable<HttpData> Subcribe(IPAddress ipAddress, int port,
+        [EnumeratorCancellation]CancellationToken cancellationToken)
     {
         await foreach (var dataReceived in _listenerService.Subscribe(ipAddress, port, cancellationToken))
         {
@@ -41,29 +43,42 @@ public class TcpConnectionManager : ITcpConnectionManager
 
     private async Task<(HttpData httpData, bool shouldReturn)> HandleRequest(BufferData dataReceived, IPAddress ipAddress, int port)
     {
-        // extract ip headers
+        //validate data length
+        if (dataReceived.length < 40)
+            return (default, false); 
+
+        // extract ip header
         var ipHeader = _ipHeaderParser.Decode(dataReceived.data, out var tcpStartIndex);
+
+        if (ipHeader is not IPv4Header)
+            return (default, false);
+
+        var ipv4 = (IPv4Header)ipHeader; 
+
+        if(ipv4.Protocol != Protocols.TCP)
+            return (default, false);
+
+        // extract tcp header
         var tcpHeader = _tcpHeaderParser.Decode(dataReceived.data, tcpStartIndex, out var nextIndex);
 
+        if(tcpHeader.DestinationPort != port)
+            return (default, false);
+
         // check dictionary
-        var sourceIp = ipHeader.SourceAddress;
+        var sourceIp = ipv4.SourceAddress;
         var sourcePort = tcpHeader.SourcePort;
+
         var key = new TcpConnectionKey(sourceIp, ipAddress, sourcePort, port);
         if (!_connectionDictionary.TryGetValue(key, out var connection))
-            _connectionDictionary[key] = CreateConnection(ipHeader, tcpHeader);
-
-        //add validations (port, ip, tcp etc.)
+            _connectionDictionary[key] = CreateConnection(ipv4, tcpHeader);
 
         //handle
         int? dataIndexStart = nextIndex >= dataReceived.length ? null : nextIndex;
-        var tcpData = new TcpData(ipHeader, tcpHeader, dataReceived, dataIndexStart); 
-        var handled = await _connectionDictionary[key].HandleRequest(tcpData);
+        var tcpData = new TcpData(ipv4, tcpHeader, dataReceived, dataIndexStart); 
+        var result = await _connectionDictionary[key].HandleRequest(tcpData);
 
-        if (handled.shouldReturn)
-            return handled;
-
-        return (default, false); 
+        return result; 
     }
 
-    private TcpConnection CreateConnection(IpHeader ipHeader, TcpHeader tcpHeader) => throw new NotImplementedException();
+    private TcpConnection CreateConnection(IPv4Header ipHeader, TcpHeader tcpHeader) => throw new NotImplementedException();
 }
