@@ -55,16 +55,42 @@ public class TcpConnectionManager : ITcpConnectionManager
         await _listenerService.SendAsync(serialized, ipEndPoint); 
     }
 
-    private byte[] Serialize(TcpData tcpData) => throw new NotImplementedException();
+    private byte[] Serialize(TcpData tcpData)
+    {
+        if (tcpData.IpHeader is not IPv4Header)
+            throw new NotImplementedException("Only implemented for Ipv4");
+        
+        var ipHeader = tcpData.IpHeader as IPv4Header;
+        var tcpHeader = tcpData.TcpHeader;
+        var data = tcpData.Data.Data;
+        var dataLength = tcpData.Data.Length;
+        var startIndex = tcpData.DataIndexStart ?? 0;
+
+        //validate lengths
+
+        if (data.Length - startIndex != dataLength)
+            throw new InvalidOperationException("Data length mismatch...details..."); 
+
+        if (ipHeader.TotalLength != ipHeader.HeaderLength + tcpHeader.TcpHeaderLength + dataLength)
+            throw new InvalidOperationException("Data length mismatch...details..."); 
+
+        var buffer = new byte[ipHeader.TotalLength];
+
+        _ipHeaderParser.Encode(ipHeader, buffer, 0, out var tcpStartIndex);
+        _tcpHeaderParser.Encode(tcpHeader, buffer, tcpStartIndex, out var dataStartIndex);
+        Array.Copy(data, startIndex, buffer, dataStartIndex, dataLength);
+
+        return buffer;
+    }
 
     private async Task<(HttpData httpData, bool shouldReturn)> HandleRequest(BufferData dataReceived, IPAddress ipAddress, int port)
     {
         //validate data length
-        if (dataReceived.length < 40)
+        if (dataReceived.Length < 40)
             return (default, false);
 
         // extract ip header
-        var ipHeader = _ipHeaderParser.Decode(dataReceived.data, out var tcpStartIndex);
+        var ipHeader = _ipHeaderParser.Decode(dataReceived.Data, out var tcpStartIndex);
 
         if (ipHeader is not IPv4Header)
             return (default, false);
@@ -75,7 +101,7 @@ public class TcpConnectionManager : ITcpConnectionManager
             return (default, false);
 
         // extract tcp header
-        var tcpHeader = _tcpHeaderParser.Decode(dataReceived.data, tcpStartIndex, out var nextIndex);
+        var tcpHeader = _tcpHeaderParser.Decode(dataReceived.Data, tcpStartIndex, out var nextIndex);
 
         if (tcpHeader.DestinationPort != port)
             return (default, false);
@@ -89,7 +115,7 @@ public class TcpConnectionManager : ITcpConnectionManager
             _connectionDictionary[key] = CreateConnection(ipv4, tcpHeader);
 
         //handle
-        int? dataIndexStart = nextIndex >= dataReceived.length ? null : nextIndex;
+        int? dataIndexStart = nextIndex >= dataReceived.Length ? null : nextIndex;
         var tcpData = new TcpData(ipv4, tcpHeader, dataReceived, dataIndexStart);
         var result = await _connectionDictionary[key].HandleRequest(tcpData);
 
