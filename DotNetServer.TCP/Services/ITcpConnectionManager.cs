@@ -119,7 +119,10 @@ public class TcpConnectionManager : ITcpConnectionManager
         var tcpData = new TcpData(ipv4, tcpHeader, dataReceived, dataIndexStart);
         var result = await _connectionDictionary[key].HandleRequest(tcpData);
 
-        return result;
+        if (result.shouldDropConnection)
+            _connectionDictionary.Remove(key, out var _);
+
+        return (result.httpData, result.shouldReturn);
     }
 
     private TcpConnection CreateConnection(IPv4Header ipHeader, TcpHeader tcpHeader)

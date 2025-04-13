@@ -36,7 +36,7 @@ public class TcpConnection
     public uint? TimestampEchoReply { get; }
     public ushort? TimeoutInMs { get; }
 
-    public async Task<(HttpData httpData, bool shouldReturn)> HandleRequest(TcpData tcpData) =>
+    public async Task<(HttpData httpData, bool shouldReturn, bool shouldDropConnection)> HandleRequest(TcpData tcpData) =>
         throw new NotImplementedException();
 
     public async Task<TcpData> Send(HttpData httpData) => throw new NotImplementedException(); 
