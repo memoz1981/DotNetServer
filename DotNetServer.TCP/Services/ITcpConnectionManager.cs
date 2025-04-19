@@ -76,7 +76,7 @@ public class TcpConnectionManager : ITcpConnectionManager
         var dataReceivedWithAmendedIndex = dataReceived with { DataStartIndex = nextIndex };
 
         var tcpProcessingContext = new TcpProcessingContext(tcpHeader, ipHeader, dataReceivedWithAmendedIndex);
-        await _connectionDictionary[key].Receive(tcpProcessingContext);
+        _connectionDictionary[key].Receive(tcpProcessingContext);
 
         return tcpProcessingContext; 
     }

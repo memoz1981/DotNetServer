@@ -1,4 +1,5 @@
 ﻿using DotNetServer.TCP.IP;
+using DotNetServer.TCP.TCP;
 
 namespace DotNetServer.TCP.Services;
 
@@ -46,17 +47,22 @@ public class TcpConnection
     /// </summary>
     /// <param name="context"></param>
     /// <returns></returns>
-    public async Task Receive(TcpProcessingContext context)
+    public void Receive(TcpProcessingContext context)
     {
-        if (context.TcpHeaderReceived.Flags == TCP.TcpHeaderFlags.SYN)
+        switch  (context.TcpHeaderReceived.Flags, _state) 
         {
-            if (_state == TcpConnectionState.None)
-                _state = TcpConnectionState.SynReceived; 
+            case (TcpHeaderFlags.SYN, TcpConnectionState.None):
+                _state = TcpConnectionState.SynReceived;
+                break;
+            case (TcpHeaderFlags.SYN, _):
+                throw new InvalidOperationException("The connection state is already set...")
 
-            
-        }
-
-        
+            case (TcpHeaderFlags.ACK, TcpConnectionState.SynAckSent):
+                _state = TcpConnectionState.Established;
+                break;
+            default:
+                throw new NotImplementedException("This section will be populated later..."); 
+        };
     }
 
     /// <summary>

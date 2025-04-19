@@ -3,12 +3,12 @@
 public enum TcpConnectionState
 {
     None,
-    Closed,
-    SynSent,
     SynReceived,
+    SynAckSent,
     Established,
     FinWait,
     CloseWait,
     LastAck,
-    TimeWait
+    TimeWait,
+    Closed,
 }
