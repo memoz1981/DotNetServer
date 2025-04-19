@@ -54,12 +54,14 @@ public class TcpConnection
             case (TcpHeaderFlags.SYN, TcpConnectionState.None):
                 _state = TcpConnectionState.SynReceived;
                 break;
+
             case (TcpHeaderFlags.SYN, _):
-                throw new InvalidOperationException("The connection state is already set...")
+                throw new InvalidOperationException("The connection state is already set...");
 
             case (TcpHeaderFlags.ACK, TcpConnectionState.SynAckSent):
                 _state = TcpConnectionState.Established;
                 break;
+
             default:
                 throw new NotImplementedException("This section will be populated later..."); 
         };
@@ -70,35 +72,74 @@ public class TcpConnection
     /// </summary>
     /// <param name="context"></param>
     /// <returns></returns>
-    public async IAsyncEnumerable<TcpProcessingContext> Send(TcpProcessingContext context)
+    public IEnumerable<TcpProcessingContext> Send(TcpProcessingContext context)
     {
-        await Task.CompletedTask;
+        if (_state == TcpConnectionState.SynReceived)
+        {
+            var tcpHeader = BuildTcpHeader(context, 6500, context.TcpHeaderReceived.SequenceNumber + 1,
+                TcpHeaderFlags.SYN | TcpHeaderFlags.ACK, 0); 
+            var ipHeader = BuildIpHeader(context, tcpHeader.DataOffset + 5, 0);
 
-        yield break; 
+            var checkSum = TcpChecksumCalculator.ComputeTcpChecksumSafe((IPv4Header)ipHeader, tcpHeader, []);
+
+            tcpHeader.SetCheckSum(checkSum);
+
+            context.SetIpHeader(ipHeader);
+            context.SetTcpHeader(tcpHeader);
+        }
+
+        yield return context; 
     }
 
-    private async Task SendSynAck(TcpProcessingContext context)
+    private IpHeader BuildIpHeader(TcpProcessingContext context, int totalLength, int? identification = null)
     {
-        //var ipHeader = ReturnSwappedIpv4Header((IPv4Header)tcpData.IpHeader, -1);
-        //var tcpHeader = new TcpHeader(
-        //    sourcePort: tcpData.TcpHeader.DestinationPort,
-        //    destinationPort: tcpData.TcpHeader.SourcePort,
-        //    sequenceNumber: 6500, //should be a random number
-        //    acknowledgementNumber: tcpData.TcpHeader.SequenceNumber + 1,
-        //    dataOffset: tcpData.TcpHeader.DataOffset,
-        //    flags: TcpHeaderFlags.SYN | TcpHeaderFlags.ACK,
-        //    window: tcpData.TcpHeader.Window,
-        //    checksum: 1,
-        //    urgentPointer: tcpData.TcpHeader.UrgentPointer);
+        if (context.IpHeaderSent is not null)
+            return context.IpHeaderSent;
 
-        //foreach (var option in tcpData.TcpHeader.Options)
-        //    tcpHeader.AddOption(option);
+        var version = context.IpHeaderReceived.Version;
 
-        await Task.CompletedTask; 
+        var ipv4 = (IPv4Header)context.IpHeaderReceived;
+
+        return new IPv4Header(
+            version: context.IpHeaderReceived.Version,
+            sourceAddress: context.IpHeaderReceived.DestinationAddress,
+            destinationAddress: context.IpHeaderReceived.SourceAddress,
+            internetHeaderLength: 5,
+            differentiatedServicesCodePoint: ipv4.DifferentiatedServicesCodePoint,
+            explicitCongestionNotification: ipv4.ExplicitCongestionNotification,
+            totalLength: totalLength,
+            identification: identification ?? ipv4.Identification,
+            flags: IpFragmentationFlags.DontFragment,
+            fragmentOffset: 0,
+            timeToLive: ipv4.TimeToLive,
+            protocol: ipv4.Protocol,
+            headerChecksum: 0,
+            options: []);
     }
 
-    private IPv4Header ReturnSwappedIpv4Header(IPv4Header ipHeader, int totalLength) => new IPv4Header(version: ipHeader.Version, sourceAddress: ipHeader.DestinationAddress,
-        destinationAddress: ipHeader.SourceAddress, ipHeader.InternetHeaderLength, ipHeader.DifferentiatedServicesCodePoint, ipHeader.ExplicitCongestionNotification,
-        totalLength, ipHeader.Identification, ipHeader.Flags, ipHeader.FragmentOffset, ipHeader.TimeToLive, ipHeader.Protocol,
-        ipHeader.HeaderChecksum, ipHeader.Options);
+    private TcpHeader BuildTcpHeader(TcpProcessingContext context, uint sequenceNumber, uint ackNumber,
+        TcpHeaderFlags flags, ushort checkSum)
+    {
+        if (context.TcpHeaderSent is not null)
+            return context.TcpHeaderSent;
+
+        var tcpHeader = new TcpHeader(
+            sourcePort: context.TcpHeaderReceived.DestinationPort,
+            destinationPort: context.TcpHeaderReceived.SourcePort,
+            sequenceNumber: sequenceNumber,
+            acknowledgementNumber: ackNumber,
+            dataOffset: 0,
+            flags: flags,
+            window: context.TcpHeaderReceived.Window,
+            checksum: checkSum,
+            urgentPointer: 0);
+
+        //for now just add same options as original header...
+        foreach (var option in context.TcpHeaderReceived.Options)
+            tcpHeader.AddOption(option);
+
+        return tcpHeader; 
+    }
+
+    public bool IsConnectionEstablished() => _state == TcpConnectionState.Established; 
 }

@@ -19,9 +19,13 @@ public class TcpConnectionManager : ITcpConnectionManager
     private readonly IIpHeaderParser _ipHeaderParser;
     private readonly ITcpHeaderParser _tcpHeaderParser;
 
-    public TcpConnectionManager(IPacketListenerService listenerService)
+    public TcpConnectionManager(IPacketListenerService listenerService,
+        IIpHeaderParser ipHeaderParser,
+        ITcpHeaderParser tcpHeaderParser)
     {
         _listenerService = listenerService;
+        _ipHeaderParser = ipHeaderParser;
+        _tcpHeaderParser = tcpHeaderParser;
     }
 
     public async IAsyncEnumerable<TcpProcessingContext> Subcribe(IPAddress ipAddress, int port,
@@ -32,7 +36,7 @@ public class TcpConnectionManager : ITcpConnectionManager
             if (cancellationToken.IsCancellationRequested)
                 break;
 
-            var context = await HandleRequest(dataReceived, ipAddress, port);
+            var context = HandleRequest(dataReceived, ipAddress, port);
 
             if (context.ContainsData())
                 yield return context; // send to upper environment listeners (Http etc.)
@@ -41,7 +45,7 @@ public class TcpConnectionManager : ITcpConnectionManager
         }
     }
 
-    private async Task<TcpProcessingContext> HandleRequest(BufferData dataReceived, IPAddress ipAddress, int port)
+    private TcpProcessingContext HandleRequest(BufferData dataReceived, IPAddress ipAddress, int port)
     {
         //validate data length
         if (dataReceived.Length < 40)
@@ -113,7 +117,7 @@ public class TcpConnectionManager : ITcpConnectionManager
 
         var dataToSend = _connectionDictionary[tcpConnectionKey].Send(context);
 
-        await foreach (var contextData in dataToSend)
+        foreach (var contextData in dataToSend)
         {
             if (!contextData.ShouldReturnToClient())
                 continue; 

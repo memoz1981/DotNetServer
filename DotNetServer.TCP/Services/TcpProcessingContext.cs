@@ -26,8 +26,8 @@ public record struct TcpProcessingContext
 
     public TcpHeader TcpHeaderReceived { get; }
     public IpHeader IpHeaderReceived { get; }
-    public TcpHeader TcpHeaderSent { get; }
-    public IpHeader IpHeaderSent { get; }
+    public TcpHeader TcpHeaderSent { get; private set; }
+    public IpHeader IpHeaderSent { get; private set; }
     public BufferData Received { get; }
     public BufferData? Sent { get; }
     public bool ContainsData() => Sent is not null;
@@ -36,5 +36,8 @@ public record struct TcpProcessingContext
 
     public static TcpProcessingContext Default = default;
     public TcpConnectionKey GetKey() => new TcpConnectionKey(IpHeaderReceived.SourceAddress, IpHeaderReceived.DestinationAddress,
-        TcpHeaderReceived.SourcePort, TcpHeaderReceived.DestinationPort); 
+        TcpHeaderReceived.SourcePort, TcpHeaderReceived.DestinationPort);
+
+    public void SetTcpHeader(TcpHeader header) => TcpHeaderSent = header;
+    public void SetIpHeader(IpHeader header) => IpHeaderSent = header;
 }

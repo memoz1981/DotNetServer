@@ -27,6 +27,7 @@ public class TcpHeader
     }
 
     public void AddOption(TcpOption optionToAdd) => Options.Add(optionToAdd);
+    public void SetCheckSum(ushort checksum) => Checksum = checksum;
 
     public int SourcePort { get; }
     public int DestinationPort { get; }
@@ -36,7 +37,7 @@ public class TcpHeader
     public int TcpHeaderLength { get => DataOffset * 4; }
     public TcpHeaderFlags Flags { get; }
     public int Window { get; }
-    public ushort Checksum { get; }
+    public ushort Checksum { get; private set; }
     public ushort UrgentPointer { get; }
     //placeholder property to sort out options - for now skipping. 
     public int OptionsLength { get => TcpHeaderLength - 20; }
