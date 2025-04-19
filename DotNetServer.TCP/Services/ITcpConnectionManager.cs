@@ -36,12 +36,8 @@ public class TcpConnectionManager : ITcpConnectionManager
 
             if (context.ContainsData())
                 yield return context; // send to upper environment listeners (Http etc.)
-            else if (context.ShouldReturnToClient())
-                await Send(context);
-            else if (context.DropConnection)
-                _connectionDictionary.Remove(context.GetKey(), out var _);
             else
-                continue; 
+                await Send(context);
         }
     }
 
@@ -80,7 +76,9 @@ public class TcpConnectionManager : ITcpConnectionManager
         var dataReceivedWithAmendedIndex = dataReceived with { DataStartIndex = nextIndex };
 
         var tcpProcessingContext = new TcpProcessingContext(tcpHeader, ipHeader, dataReceivedWithAmendedIndex);
-        return await _connectionDictionary[key].Receive(tcpProcessingContext);
+        await _connectionDictionary[key].Receive(tcpProcessingContext);
+
+        return tcpProcessingContext; 
     }
 
     private TcpConnection CreateConnection(IPv4Header ipHeader, TcpHeader tcpHeader)
@@ -117,6 +115,9 @@ public class TcpConnectionManager : ITcpConnectionManager
 
         await foreach (var contextData in dataToSend)
         {
+            if (!contextData.ShouldReturnToClient())
+                continue; 
+
             byte[] serialized = SerializeDataToSend(contextData);
 
             var ipEndPoint = new IPEndPoint(tcpConnectionKey.SourceIpAddress, tcpConnectionKey.SourcePort);

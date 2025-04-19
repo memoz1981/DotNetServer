@@ -46,17 +46,17 @@ public class TcpConnection
     /// </summary>
     /// <param name="context"></param>
     /// <returns></returns>
-    public async Task<TcpProcessingContext> Receive(TcpProcessingContext context)
+    public async Task Receive(TcpProcessingContext context)
     {
         if (context.TcpHeaderReceived.Flags == TCP.TcpHeaderFlags.SYN)
         {
             if (_state == TcpConnectionState.None)
-                await SendSynAck(context);
+                _state = TcpConnectionState.SynReceived; 
 
-            return TcpProcessingContext.Default;
+            
         }
 
-        return TcpProcessingContext.Default;
+        
     }
 
     /// <summary>
