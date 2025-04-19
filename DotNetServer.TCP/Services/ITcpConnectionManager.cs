@@ -8,9 +8,8 @@ namespace DotNetServer.TCP.Services;
 
 public interface ITcpConnectionManager
 {
-    IAsyncEnumerable<HttpData> Subcribe(IPAddress ipAddress, int port, CancellationToken cancellationToken);
-    Task Send(HttpData httpData);
-    Task Send(TcpData tcpData);
+    IAsyncEnumerable<TcpProcessingContext> Subcribe(IPAddress ipAddress, int port, CancellationToken cancellationToken);
+    Task Send(TcpProcessingContext data);
 }
 
 public class TcpConnectionManager : ITcpConnectionManager
@@ -25,7 +24,7 @@ public class TcpConnectionManager : ITcpConnectionManager
         _listenerService = listenerService;
     }
 
-    public async IAsyncEnumerable<HttpData> Subcribe(IPAddress ipAddress, int port,
+    public async IAsyncEnumerable<TcpProcessingContext> Subcribe(IPAddress ipAddress, int port,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await foreach (var dataReceived in _listenerService.Subscribe(ipAddress, port, cancellationToken))
@@ -33,95 +32,41 @@ public class TcpConnectionManager : ITcpConnectionManager
             if (cancellationToken.IsCancellationRequested)
                 break;
 
-            var result = await HandleRequest(dataReceived, ipAddress, port);
+            var context = await HandleRequest(dataReceived, ipAddress, port);
 
-            if (result.shouldReturn)
-                yield return result.httpData;
+            if (context.ContainsData())
+                yield return context; // send to upper environment listeners (Http etc.)
+            else if (context.ShouldReturnToClient())
+                await Send(context);
+            else if (context.DropConnection)
+                _connectionDictionary.Remove(context.GetKey(), out var _);
+            else
+                continue; 
         }
     }
 
-    public async Task Send(HttpData httpData)
-    {
-        // first check if the tcp connection exists
-        var tcpConnectionKey = new TcpConnectionKey(httpData.TcpData.IpHeader.SourceAddress, httpData.TcpData.IpHeader.DestinationAddress,
-            httpData.TcpData.TcpHeader.SourcePort, httpData.TcpData.TcpHeader.DestinationPort);
-
-        if (!_connectionDictionary.TryGetValue(tcpConnectionKey, out var connection))
-            throw new InvalidOperationException("No active connections to specified source ip/port...");//include details
-
-        var tcpData = await connection.Send(httpData);
-        byte[] serialized = Serialize(tcpData);
-
-        var ipEndPoint = new IPEndPoint(tcpConnectionKey.SourceIpAddress, tcpConnectionKey.SourcePort); 
-        await _listenerService.SendAsync(serialized, ipEndPoint); 
-    }
-
-    public async Task Send(TcpData tcpData)
-    {
-        // first check if the tcp connection exists
-        var tcpConnectionKey = new TcpConnectionKey(tcpData.IpHeader.SourceAddress, tcpData.IpHeader.DestinationAddress,
-            tcpData.TcpHeader.SourcePort, tcpData.TcpHeader.DestinationPort);
-
-        if (!_connectionDictionary.TryGetValue(tcpConnectionKey, out var connection))
-            throw new InvalidOperationException("No active connections to specified source ip/port...");//include details
-
-        byte[] serialized = Serialize(tcpData);
-
-        var ipEndPoint = new IPEndPoint(tcpConnectionKey.SourceIpAddress, tcpConnectionKey.SourcePort);
-        await _listenerService.SendAsync(serialized, ipEndPoint);
-    }
-
-    private byte[] Serialize(TcpData tcpData)
-    {
-        if (tcpData.IpHeader is not IPv4Header)
-            throw new NotImplementedException("Only implemented for Ipv4");
-        
-        var ipHeader = tcpData.IpHeader as IPv4Header;
-        var tcpHeader = tcpData.TcpHeader;
-        var data = tcpData.Data.Data;
-        var dataLength = tcpData.Data.Length;
-        var startIndex = tcpData.DataIndexStart ?? 0;
-
-        //validate lengths
-        if (data.Length - startIndex != dataLength)
-            throw new InvalidOperationException("Data length mismatch...details..."); 
-
-        if (ipHeader.TotalLength != ipHeader.HeaderLength + tcpHeader.TcpHeaderLength + dataLength)
-            throw new InvalidOperationException("Data length mismatch...details..."); 
-
-        var buffer = new byte[ipHeader.TotalLength];
-
-        _ipHeaderParser.Encode(ipHeader, buffer, 0, out var tcpStartIndex);
-        _tcpHeaderParser.Encode(tcpHeader, buffer, tcpStartIndex, out var dataStartIndex);
-
-        if(dataLength != 0)
-            Array.Copy(data, startIndex, buffer, dataStartIndex, dataLength);
-
-        return buffer;
-    }
-
-    private async Task<(HttpData httpData, bool shouldReturn)> HandleRequest(BufferData dataReceived, IPAddress ipAddress, int port)
+    private async Task<TcpProcessingContext> HandleRequest(BufferData dataReceived, IPAddress ipAddress, int port)
     {
         //validate data length
         if (dataReceived.Length < 40)
-            return (default, false);
+            return TcpProcessingContext.Default;
 
         // extract ip header
         var ipHeader = _ipHeaderParser.Decode(dataReceived.Data, out var tcpStartIndex);
 
         if (ipHeader is not IPv4Header)
-            return (default, false);
+            return TcpProcessingContext.Default;
 
         var ipv4 = (IPv4Header)ipHeader;
 
         if (ipv4.Protocol != Protocols.TCP)
-            return (default, false);
+            return TcpProcessingContext.Default;
 
         // extract tcp header
         var tcpHeader = _tcpHeaderParser.Decode(dataReceived.Data, tcpStartIndex, out var nextIndex);
 
         if (tcpHeader.DestinationPort != port)
-            return (default, false);
+            return TcpProcessingContext.Default;
 
         // check dictionary
         var sourceIp = ipv4.SourceAddress;
@@ -132,23 +77,16 @@ public class TcpConnectionManager : ITcpConnectionManager
             _connectionDictionary[key] = CreateConnection(ipv4, tcpHeader);
 
         //handle
-        int? dataIndexStart = nextIndex >= dataReceived.Length ? null : nextIndex;
-        var tcpData = new TcpData(ipv4, tcpHeader, dataReceived, dataIndexStart);
-        var result = await _connectionDictionary[key].HandleRequest(tcpData);
+        var dataReceivedWithAmendedIndex = dataReceived with { DataStartIndex = nextIndex };
 
-        if (result.shouldDropConnection)
-            _connectionDictionary.Remove(key, out var _);
-
-        return (result.httpData, result.shouldReturn);
+        var tcpProcessingContext = new TcpProcessingContext(tcpHeader, ipHeader, dataReceivedWithAmendedIndex);
+        return await _connectionDictionary[key].Receive(tcpProcessingContext);
     }
 
     private TcpConnection CreateConnection(IPv4Header ipHeader, TcpHeader tcpHeader)
     {
         var connectionKey = new TcpConnectionKey(ipHeader.SourceAddress, ipHeader.DestinationAddress,
             tcpHeader.SourcePort, tcpHeader.DestinationPort);
-
-        if ((byte)tcpHeader.Flags != 0x010)
-            throw new ArgumentException($"Expect a SYN package on new connection, but was {tcpHeader.Flags}");
 
         var mssOption = tcpHeader.Options.SingleOrDefault(op => op.Kind == TcpOptionsKind.MaximumSegmentSize) as TcpOptionMss;
 
@@ -163,8 +101,51 @@ public class TcpConnectionManager : ITcpConnectionManager
         var userTimeoutOption = tcpHeader.Options.SingleOrDefault(op => op.Kind == TcpOptionsKind.UserTimeoutOption) as TcpOptionUserTimeout;
 
         // this should also trigger sending a Syn-Ack message back to client...
-        return new TcpConnection(this, connectionKey, TcpConnectionState.SynReceived, mssOption?.MaximumSegmentSize,
+        return new TcpConnection(this, connectionKey, mssOption?.MaximumSegmentSize,
             windowScaleOption?.WindowScale, sackPermitted, sackOption?.Blocks,
-            timeStampOption?.TimestampValue, timeStampOption?.TimestampEchoReply, userTimeoutOption?.TimeoutInMs); 
+            timeStampOption?.TimestampValue, timeStampOption?.TimestampEchoReply, userTimeoutOption?.TimeoutInMs);
+    }
+
+    public async Task Send(TcpProcessingContext context)
+    {
+        // first check if the tcp connection exists
+        var tcpConnectionKey = context.GetKey(); 
+        if (!_connectionDictionary.TryGetValue(tcpConnectionKey, out var connection))
+            throw new InvalidOperationException("No active connections to specified source ip/port..."); //include details
+
+        var dataToSend = _connectionDictionary[tcpConnectionKey].Send(context);
+
+        await foreach (var contextData in dataToSend)
+        {
+            byte[] serialized = SerializeDataToSend(contextData);
+
+            var ipEndPoint = new IPEndPoint(tcpConnectionKey.SourceIpAddress, tcpConnectionKey.SourcePort);
+            await _listenerService.SendAsync(serialized, ipEndPoint);
+        }
+    }
+
+    private byte[] SerializeDataToSend(TcpProcessingContext context)
+    {
+        var ipHeader = context.IpHeaderSent as IPv4Header;
+        var tcpHeader = context.TcpHeaderSent;
+        var data = context.Sent;
+        var dataLength = context.Sent?.Length ?? 0;
+        var startIndex = context.Sent?.DataStartIndex ?? 0;
+
+        // we expect ip header total length to be correctly set by the TcpConnection... 
+        var buffer = new byte[ipHeader.TotalLength];
+
+        _ipHeaderParser.Encode(ipHeader, buffer, 0, out var tcpStartIndex);
+        _tcpHeaderParser.Encode(tcpHeader, buffer, tcpStartIndex, out var dataStartIndex);
+
+        //validate data length
+        if (ipHeader.TotalLength != dataLength + dataStartIndex)
+            throw new InvalidOperationException($"Data start index {dataStartIndex} + data length {dataLength} " +
+                $"doesn't match with ip header total length {ipHeader.TotalLength}");
+
+        if(dataLength != 0)
+            Array.Copy(data.Value.Data, startIndex, buffer, dataStartIndex, dataLength);
+
+        return buffer;
     }
 }

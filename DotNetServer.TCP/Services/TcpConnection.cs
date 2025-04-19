@@ -1,4 +1,6 @@
-﻿namespace DotNetServer.TCP.Services;
+﻿using DotNetServer.TCP.IP;
+
+namespace DotNetServer.TCP.Services;
 
 //for now this service assumed one packet per request, later will be extended...
 // check if it needs to be disposable
@@ -7,14 +9,14 @@ public class TcpConnection
     public TcpConnection(
         ITcpConnectionManager connectionManager,
         TcpConnectionKey key,
-        TcpConnectionState state,
         ushort? maximumSegmentSize,
         byte? windowScale,
         bool sackPermitted,
         List<(uint, uint)> sackBlocks,
         uint? timestampValue,
         uint? timestampEchoReply,
-        ushort? timeoutInMs)
+        ushort? timeoutInMs,
+        TcpConnectionState state = TcpConnectionState.None)
     {
         _key = key;
         _state = state;
@@ -39,11 +41,58 @@ public class TcpConnection
     private ushort? _timeoutInMs;
     private readonly ITcpConnectionManager _connectionManager;
 
-    public async Task<(HttpData httpData, bool shouldReturn, bool shouldDropConnection)> HandleRequest(
-        TcpData tcpData)
+    /// <summary>
+    /// Updates Tcp connection state and sets values
+    /// </summary>
+    /// <param name="context"></param>
+    /// <returns></returns>
+    public async Task<TcpProcessingContext> Receive(TcpProcessingContext context)
     {
+        if (context.TcpHeaderReceived.Flags == TCP.TcpHeaderFlags.SYN)
+        {
+            if (_state == TcpConnectionState.None)
+                await SendSynAck(context);
 
+            return TcpProcessingContext.Default;
+        }
+
+        return TcpProcessingContext.Default;
     }
 
-    public async Task<TcpData> Send(HttpData httpData) => throw new NotImplementedException(); 
+    /// <summary>
+    /// Prepares packets to be sent back to client. 
+    /// </summary>
+    /// <param name="context"></param>
+    /// <returns></returns>
+    public async IAsyncEnumerable<TcpProcessingContext> Send(TcpProcessingContext context)
+    {
+        await Task.CompletedTask;
+
+        yield break; 
+    }
+
+    private async Task SendSynAck(TcpProcessingContext context)
+    {
+        //var ipHeader = ReturnSwappedIpv4Header((IPv4Header)tcpData.IpHeader, -1);
+        //var tcpHeader = new TcpHeader(
+        //    sourcePort: tcpData.TcpHeader.DestinationPort,
+        //    destinationPort: tcpData.TcpHeader.SourcePort,
+        //    sequenceNumber: 6500, //should be a random number
+        //    acknowledgementNumber: tcpData.TcpHeader.SequenceNumber + 1,
+        //    dataOffset: tcpData.TcpHeader.DataOffset,
+        //    flags: TcpHeaderFlags.SYN | TcpHeaderFlags.ACK,
+        //    window: tcpData.TcpHeader.Window,
+        //    checksum: 1,
+        //    urgentPointer: tcpData.TcpHeader.UrgentPointer);
+
+        //foreach (var option in tcpData.TcpHeader.Options)
+        //    tcpHeader.AddOption(option);
+
+        await Task.CompletedTask; 
+    }
+
+    private IPv4Header ReturnSwappedIpv4Header(IPv4Header ipHeader, int totalLength) => new IPv4Header(version: ipHeader.Version, sourceAddress: ipHeader.DestinationAddress,
+        destinationAddress: ipHeader.SourceAddress, ipHeader.InternetHeaderLength, ipHeader.DifferentiatedServicesCodePoint, ipHeader.ExplicitCongestionNotification,
+        totalLength, ipHeader.Identification, ipHeader.Flags, ipHeader.FragmentOffset, ipHeader.TimeToLive, ipHeader.Protocol,
+        ipHeader.HeaderChecksum, ipHeader.Options);
 }

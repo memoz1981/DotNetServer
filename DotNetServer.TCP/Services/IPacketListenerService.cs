@@ -34,7 +34,7 @@ public class PacketListenerService : IPacketListenerService
         {
             int bytesRead = await _dataSocket.ReceiveAsync(buffer);
 
-            var bufferData = new BufferData(buffer, bytesRead);
+            var bufferData = new BufferData(buffer, 0, bytesRead);
 
             yield return bufferData; 
         }
