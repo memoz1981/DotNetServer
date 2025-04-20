@@ -24,15 +24,18 @@ public class PacketListenerService : IPacketListenerService
         if (_dataSocket is not null)
             throw new InvalidOperationException("Already listening to another stream...");
 
-        _dataSocket = new Socket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.IP);
-        _dataSocket.Bind(new IPEndPoint(ipAddressToListen, portToListen));
+        _dataSocket = new Socket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.Tcp);
         _dataSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, true);
+        _dataSocket.Bind(new IPEndPoint(ipAddressToListen, portToListen));
+        
 
         byte[] buffer = new byte[65535];
 
         while (!cancellationToken.IsCancellationRequested)
         {
             int bytesRead = await _dataSocket.ReceiveAsync(buffer);
+
+            var received = string.Join(',', buffer.Take(bytesRead).Select(x => x.ToString("X2")));
 
             var bufferData = new BufferData(buffer, 0, bytesRead);
 
@@ -43,5 +46,9 @@ public class PacketListenerService : IPacketListenerService
     public void Dispose() => _dataSocket?.Dispose();
 
     public async Task SendAsync(byte[] dataToSend, IPEndPoint endPoint)
-        => await _dataSocket.SendToAsync(dataToSend, endPoint); 
+    {
+        var bytesToSend = string.Join(',', dataToSend.Select(x => x.ToString("X2")));
+        await _dataSocket.SendToAsync(dataToSend, endPoint);
+    }
+
 }

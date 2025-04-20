@@ -67,10 +67,15 @@ public sealed class IPv4Header : IpHeader
     public Protocols Protocol { get; }
 
     // calculated value - for received packets read, for sent calculate
-    public int HeaderChecksum { get; }
+    public int HeaderChecksum { get; private set; }
 
     // For now will be kept as raw data
     public byte[] Options { get; }
+
+    public void SetChecksum(int checksum)
+    {
+        HeaderChecksum = checksum;
+    }
 
     public override string ToString()
     {

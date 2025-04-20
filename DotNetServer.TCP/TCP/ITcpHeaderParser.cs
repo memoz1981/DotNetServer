@@ -39,8 +39,6 @@ public class TcpHeaderParser : ITcpHeaderParser
 
             ReadTcpOptions(data, start, header, out var nextIndex);
 
-            if (length != nextIndex)
-                throw new InvalidOperationException($"Calculated index {nextIndex} doesn't match with tcp header length {length}...");
         }
 
         return header;

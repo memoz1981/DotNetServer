@@ -131,6 +131,8 @@ public class TcpConnectionManager : ITcpConnectionManager
 
     private byte[] SerializeDataToSend(TcpProcessingContext context)
     {
+        var dataReceived = string.Join(',', context.Received.Data.Take(52).Select(x => x));
+
         var ipHeader = context.IpHeaderSent as IPv4Header;
         var tcpHeader = context.TcpHeaderSent;
         var data = context.Sent;

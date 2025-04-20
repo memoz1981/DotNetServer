@@ -78,11 +78,13 @@ public class TcpConnection
         {
             var tcpHeader = BuildTcpHeader(context, 6500, context.TcpHeaderReceived.SequenceNumber + 1,
                 TcpHeaderFlags.SYN | TcpHeaderFlags.ACK, 0); 
-            var ipHeader = BuildIpHeader(context, tcpHeader.DataOffset + 5, 0);
+            var ipHeader = (IPv4Header)BuildIpHeader(context, tcpHeader.TcpHeaderLength + 20);
 
-            var checkSum = TcpChecksumCalculator.ComputeTcpChecksumSafe((IPv4Header)ipHeader, tcpHeader, []);
+            var checkSumTcp = ChecksumCalculator.ComputeTcpChecksumSafe(ipHeader, tcpHeader, []);
+            tcpHeader.SetCheckSum(checkSumTcp);
 
-            tcpHeader.SetCheckSum(checkSum);
+            var checkSumIp = ChecksumCalculator.CalculateChecksum(ipHeader);
+            ipHeader.SetChecksum(checkSumIp);
 
             context.SetIpHeader(ipHeader);
             context.SetTcpHeader(tcpHeader);
@@ -118,20 +120,22 @@ public class TcpConnection
     }
 
     private TcpHeader BuildTcpHeader(TcpProcessingContext context, uint sequenceNumber, uint ackNumber,
-        TcpHeaderFlags flags, ushort checkSum)
+        TcpHeaderFlags flags, byte dataOffset)
     {
         if (context.TcpHeaderSent is not null)
             return context.TcpHeaderSent;
+
+        var optionsLength = (byte)context.TcpHeaderReceived.Options.Sum(op => (byte)op.Length);
 
         var tcpHeader = new TcpHeader(
             sourcePort: context.TcpHeaderReceived.DestinationPort,
             destinationPort: context.TcpHeaderReceived.SourcePort,
             sequenceNumber: sequenceNumber,
             acknowledgementNumber: ackNumber,
-            dataOffset: 0,
+            dataOffset: (byte)((optionsLength + 20)/4),
             flags: flags,
             window: context.TcpHeaderReceived.Window,
-            checksum: checkSum,
+            checksum: 0,
             urgentPointer: 0);
 
         //for now just add same options as original header...
